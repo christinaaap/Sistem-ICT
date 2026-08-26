@@ -1,0 +1,6 @@
+{
+  "name": "ICT Information System - PT Donggi Senoro LNG",
+  "description": "Sistem Informasi Departemen ICT PT Donggi-Senoro LNG (DSLNG) mencakup Manajemen Aset, Helpdesk Ticketing, Absensi Geolocation & Foto, Leave Approval E-Sign, Profil ICT & Dokumen Kebijakan.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
