@@ -74,6 +74,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const { password: _, ...safeUser } = saved;
     res.status(201).json({ message: 'Registrasi berhasil.', user: safeUser });
   } catch (error) {
+    console.error('[AUTH REGISTER]', error);
     res.status(500).json({ error: 'Terjadi kesalahan pada server saat registrasi.' });
   }
 };
@@ -112,6 +113,7 @@ export const createManagedUser = async (req: Request, res: Response): Promise<vo
     const { password: _, ...safeUser } = saved;
     res.status(201).json({ message: 'Pengguna berhasil dibuat.', user: safeUser });
   } catch (error) {
+    console.error('[AUTH CREATE USER]', error);
     res.status(500).json({ error: 'Gagal membuat pengguna.' });
   }
 };
@@ -121,6 +123,7 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     const users = await db.getAllUsers();
     res.json({ users });
   } catch (error) {
+    console.error('[AUTH GET USERS]', error);
     res.status(500).json({ error: 'Gagal memuat data pengguna.' });
   }
 };
