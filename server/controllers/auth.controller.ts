@@ -17,7 +17,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = db.findUserByEmail(cleanEmail);
+    const user = await db.findUserByEmail(cleanEmail);
     if (!user) {
       res.status(401).json({ error: 'Email atau password salah.' });
       return;
@@ -51,7 +51,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const existing = db.findUserByEmail(cleanEmail);
+    const existing = await db.findUserByEmail(cleanEmail);
     if (existing) {
       res.status(409).json({ error: 'Email sudah terdaftar. Silakan login.' });
       return;
@@ -70,7 +70,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       must_change_password: true,
     };
 
-    const saved = db.createUser(newUser);
+    const saved = await db.createUser(newUser);
     const { password: _, ...safeUser } = saved;
     res.status(201).json({ message: 'Registrasi berhasil.', user: safeUser });
   } catch (error) {
@@ -80,7 +80,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const users = db.getAllUsers();
+    const users = await db.getAllUsers();
     res.json({ users });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat data pengguna.' });
@@ -90,7 +90,7 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = Number(req.params.id);
-    const updated = db.updateUser(userId, req.body);
+    const updated = await db.updateUser(userId, req.body);
     if (!updated) {
       res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
       return;
@@ -105,7 +105,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = Number(req.params.id);
-    const success = db.deleteUser(userId);
+    const success = await db.deleteUser(userId);
     if (!success) {
       res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
       return;

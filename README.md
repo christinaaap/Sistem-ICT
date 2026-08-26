@@ -96,6 +96,7 @@ Sistem menerapkan pembatasan hak akses berjenjang:
 - **Runtime**: Node.js dengan modul [TSX](https://github.com/privatenumber/tsx)
 - **Bundler Production**: [esbuild](https://esbuild.github.io/)
 - **Keamanan**: Proxy API Server-side untuk proteksi kredensial.
+- **Database**: Supabase PostgreSQL melalui `@supabase/supabase-js`.
 
 ---
 
@@ -153,12 +154,19 @@ npm install
 ```
 
 ### 4. Menjalankan di Mode Development
+Salin `.env.example` menjadi `.env`, kemudian isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` dari Supabase Dashboard > Project Settings > API. Jalankan seluruh isi [server/db/schema.sql](server/db/schema.sql) sekali melalui Supabase SQL Editor untuk membuat tabel dan akun admin default. `SUPABASE_SERVICE_ROLE_KEY` hanya boleh berada di server dan jangan pernah dikomit ke repositori.
+
+```bash
+copy .env.example .env
+```
+
+### 5. Menjalankan di Mode Development
 ```bash
 npm run dev
 ```
 Aplikasi akan aktif dan dapat diakses di browser pada: `http://localhost:3000`
 
-### 5. Kompilasi & Build Production
+### 6. Kompilasi & Build Production
 ```bash
 # Melakukan build frontend dan server bundle CJS
 npm run build
@@ -167,7 +175,7 @@ npm run build
 npm run start
 ```
 
-### 6. Pengecekan Kualitas Kode & Tipe (Linting)
+### 7. Pengecekan Kualitas Kode & Tipe (Linting)
 ```bash
 npm run lint
 ```

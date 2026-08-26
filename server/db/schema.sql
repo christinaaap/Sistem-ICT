@@ -125,3 +125,9 @@ CREATE INDEX IF NOT EXISTS idx_tickets_code ON tickets(ticket_code);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
 CREATE INDEX IF NOT EXISTS idx_attendances_user ON attendances(user_id);
 CREATE INDEX IF NOT EXISTS idx_leave_user ON leave_requests(user_id);
+
+-- DEFAULT ADMIN ACCOUNT
+-- Change this password after the first login in a production environment.
+INSERT INTO users (name, email, password, department, work_location, role, extension, must_change_password)
+VALUES ('Administrator', 'admin.ict@dslng.com', 'TinaDSLNG321', 'Corporate Affairs Director', 'Site Luwuk', 'admin', 'x4401', FALSE)
+ON CONFLICT (email) DO NOTHING;

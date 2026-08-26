@@ -4,7 +4,7 @@ import { IctDocument } from '../../src/types';
 
 export const getDocuments = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const documents = db.getAllDocuments();
+    const documents = await db.getAllDocuments();
     res.json({ documents });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat repositori dokumen.' });
@@ -34,7 +34,7 @@ export const uploadDocument = async (req: Request, res: Response): Promise<void>
       created_at: new Date().toISOString(),
     };
 
-    const saved = db.createDocument(newDoc);
+    const saved = await db.createDocument(newDoc);
     res.status(201).json({ message: 'Dokumen berhasil diunggah.', document: saved });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mengunggah dokumen.' });
@@ -44,7 +44,7 @@ export const uploadDocument = async (req: Request, res: Response): Promise<void>
 export const deleteDocument = async (req: Request, res: Response): Promise<void> => {
   try {
     const docId = Number(req.params.id);
-    const success = db.deleteDocument(docId);
+    const success = await db.deleteDocument(docId);
     if (!success) {
       res.status(404).json({ error: 'Dokumen tidak ditemukan.' });
       return;
@@ -57,7 +57,7 @@ export const deleteDocument = async (req: Request, res: Response): Promise<void>
 
 export const clearDocuments = async (_req: Request, res: Response): Promise<void> => {
   try {
-    db.clearDocuments();
+    await db.clearDocuments();
     res.json({ message: 'Seluruh repositori dokumen berhasil dibersihkan.' });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mereset data dokumen.' });

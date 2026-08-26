@@ -4,7 +4,7 @@ import { LeaveRequest, LeaveApproval } from '../../src/types';
 
 export const getLeaves = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const leaves = db.getAllLeaves();
+    const leaves = await db.getAllLeaves();
     res.json({ leaves });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat data cuti.' });
@@ -75,7 +75,7 @@ export const createLeave = async (req: Request, res: Response): Promise<void> =>
       approvals: defaultApprovals,
     };
 
-    const saved = db.createLeave(newLeave);
+    const saved = await db.createLeave(newLeave);
     res.status(201).json({ message: 'Pengajuan cuti berhasil dibuat.', leave: saved });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memproses pengajuan cuti.' });
@@ -92,7 +92,7 @@ export const signApproval = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const updated = db.updateLeaveApproval(
+    const updated = await db.updateLeaveApproval(
       leaveId,
       Number(step_order),
       Number(approver_id),
@@ -115,7 +115,7 @@ export const signApproval = async (req: Request, res: Response): Promise<void> =
 
 export const clearLeaves = async (_req: Request, res: Response): Promise<void> => {
   try {
-    db.clearLeaves();
+    await db.clearLeaves();
     res.json({ message: 'Seluruh data cuti berhasil dibersihkan.' });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mereset data cuti.' });

@@ -4,7 +4,7 @@ import { Ticket } from '../../src/types';
 
 export const getTickets = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const tickets = db.getAllTickets();
+    const tickets = await db.getAllTickets();
     res.json({ tickets });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat tiket.' });
@@ -38,7 +38,7 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
       updated_at: new Date().toISOString(),
     };
 
-    const saved = db.createTicket(newTicket);
+    const saved = await db.createTicket(newTicket);
     res.status(201).json({ message: 'Tiket berhasil dibuat.', ticket: saved });
   } catch (error) {
     res.status(500).json({ error: 'Gagal membuat tiket.' });
@@ -50,7 +50,7 @@ export const updateTicketStatus = async (req: Request, res: Response): Promise<v
     const ticketId = Number(req.params.id);
     const { status, notes } = req.body;
 
-    const updated = db.updateTicketStatus(ticketId, status, notes);
+    const updated = await db.updateTicketStatus(ticketId, status, notes);
     if (!updated) {
       res.status(404).json({ error: 'Tiket tidak ditemukan.' });
       return;
@@ -65,7 +65,7 @@ export const updateTicketStatus = async (req: Request, res: Response): Promise<v
 export const deleteTicket = async (req: Request, res: Response): Promise<void> => {
   try {
     const ticketId = Number(req.params.id);
-    const success = db.deleteTicket(ticketId);
+    const success = await db.deleteTicket(ticketId);
     if (!success) {
       res.status(404).json({ error: 'Tiket tidak ditemukan.' });
       return;
@@ -78,7 +78,7 @@ export const deleteTicket = async (req: Request, res: Response): Promise<void> =
 
 export const clearTickets = async (_req: Request, res: Response): Promise<void> => {
   try {
-    db.clearTickets();
+    await db.clearTickets();
     res.json({ message: 'Seluruh tiket berhasil dibersihkan.' });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mereset data tiket.' });

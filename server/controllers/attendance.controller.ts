@@ -4,7 +4,7 @@ import { Attendance } from '../../src/types';
 
 export const getAttendances = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const attendances = db.getAllAttendances();
+    const attendances = await db.getAllAttendances();
     res.json({ attendances });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat rekap absensi.' });
@@ -36,7 +36,7 @@ export const createAttendance = async (req: Request, res: Response): Promise<voi
       created_at: new Date().toISOString(),
     };
 
-    const saved = db.createAttendance(newAttendance);
+    const saved = await db.createAttendance(newAttendance);
     res.status(201).json({ message: 'Presensi berhasil dicatat.', attendance: saved });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mencatat presensi.' });
@@ -45,7 +45,7 @@ export const createAttendance = async (req: Request, res: Response): Promise<voi
 
 export const clearAttendances = async (_req: Request, res: Response): Promise<void> => {
   try {
-    db.clearAttendances();
+    await db.clearAttendances();
     res.json({ message: 'Seluruh data absensi berhasil dibersihkan.' });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mereset data absensi.' });

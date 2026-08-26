@@ -4,7 +4,7 @@ import { Asset } from '../../src/types';
 
 export const getAssets = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const assets = db.getAllAssets();
+    const assets = await db.getAllAssets();
     res.json({ assets });
   } catch (error) {
     res.status(500).json({ error: 'Gagal memuat data aset.' });
@@ -35,7 +35,7 @@ export const createAsset = async (req: Request, res: Response): Promise<void> =>
       created_at: new Date().toISOString(),
     };
 
-    const saved = db.createAsset(newAsset);
+    const saved = await db.createAsset(newAsset);
     res.status(201).json({ message: 'Aset berhasil didaftarkan.', asset: saved });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menyimpan aset baru.' });
@@ -45,7 +45,7 @@ export const createAsset = async (req: Request, res: Response): Promise<void> =>
 export const updateAsset = async (req: Request, res: Response): Promise<void> => {
   try {
     const assetId = Number(req.params.id);
-    const updated = db.updateAsset(assetId, req.body);
+    const updated = await db.updateAsset(assetId, req.body);
     if (!updated) {
       res.status(404).json({ error: 'Aset tidak ditemukan.' });
       return;
@@ -59,7 +59,7 @@ export const updateAsset = async (req: Request, res: Response): Promise<void> =>
 export const deleteAsset = async (req: Request, res: Response): Promise<void> => {
   try {
     const assetId = Number(req.params.id);
-    const success = db.deleteAsset(assetId);
+    const success = await db.deleteAsset(assetId);
     if (!success) {
       res.status(404).json({ error: 'Aset tidak ditemukan.' });
       return;
@@ -93,7 +93,7 @@ export const bulkImportAssets = async (req: Request, res: Response): Promise<voi
       created_at: new Date().toISOString(),
     }));
 
-    const result = db.bulkInsertAssets(formattedAssets);
+    const result = await db.bulkInsertAssets(formattedAssets);
     res.status(201).json({ message: `${formattedAssets.length} aset berhasil diimpor.`, assets: result });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mengimpor aset.' });
@@ -102,7 +102,7 @@ export const bulkImportAssets = async (req: Request, res: Response): Promise<voi
 
 export const clearAssets = async (_req: Request, res: Response): Promise<void> => {
   try {
-    db.clearAssets();
+    await db.clearAssets();
     res.json({ message: 'Seluruh data aset berhasil dibersihkan.' });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mereset data aset.' });

@@ -1,159 +1,159 @@
-import {
-  User,
-  Asset,
-  Ticket,
-  Attendance,
-  LeaveRequest,
-  IctDocument,
-} from '../../src/types';
-import { INITIAL_USERS } from '../../src/data/initialData';
+import 'dotenv/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { User, Asset, Ticket, Attendance, LeaveRequest, IctDocument } from '../../src/types';
 
 /**
  * DATABASE ABSTRACTION LAYER (SERVER-SIDE)
  * 
- * This module manages server-side data persistence.
- * When integrating with PostgreSQL / Cloud SQL / MySQL / SQLite / Firestore:
- * Simply replace the internal CRUD operations below with your DB driver queries (e.g. pg, prisma, drizzle, knex).
+ * Server-side persistence through Supabase. The service-role key must only be
+ * used here, never exposed through Vite/client environment variables.
  */
 
 class Database {
-  private users: User[] = [...INITIAL_USERS];
-  private assets: Asset[] = [];
-  private tickets: Ticket[] = [];
-  private attendances: Attendance[] = [];
-  private leaves: LeaveRequest[] = [];
-  private documents: IctDocument[] = [];
+  private readonly client: SupabaseClient;
+
+  constructor() {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY wajib dikonfigurasi.');
+    }
+    this.client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  }
+
+  private async query<T>(operation: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
+    const { data, error } = await operation;
+    if (error) throw new Error(error.message);
+    if (data === null) throw new Error('Supabase mengembalikan data kosong.');
+    return data;
+  }
 
   // ==========================
   // USERS REPOSITORY
   // ==========================
-  public getAllUsers(): User[] {
-    return this.users.map(({ password: _, ...u }) => u as User);
+  public async getAllUsers(): Promise<User[]> {
+    const users = await this.query(this.client.from('users').select('*').order('id', { ascending: true }));
+    return (users as User[]).map(({ password: _, ...user }) => user as User);
   }
 
-  public findUserById(id: number): User | undefined {
-    return this.users.find(u => u.id === id);
+  public async findUserById(id: number): Promise<User | undefined> {
+    const { data, error } = await this.client.from('users').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as User | undefined;
   }
 
-  public findUserByEmail(email: string): User | undefined {
-    return this.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+  public async findUserByEmail(email: string): Promise<User | undefined> {
+    const { data, error } = await this.client.from('users').select('*').ilike('email', email.trim()).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as User | undefined;
   }
 
-  public createUser(user: User): User {
-    this.users.push(user);
-    return user;
+  public async createUser(user: User): Promise<User> {
+    return this.query(this.client.from('users').insert(user).select().single()) as Promise<User>;
   }
 
-  public updateUser(id: number, updates: Partial<User>): User | null {
-    const idx = this.users.findIndex(u => u.id === id);
-    if (idx === -1) return null;
-    this.users[idx] = { ...this.users[idx], ...updates };
-    return this.users[idx];
+  public async updateUser(id: number, updates: Partial<User>): Promise<User | null> {
+    const { data, error } = await this.client.from('users').update(updates).eq('id', id).select().maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as User | null;
   }
 
-  public deleteUser(id: number): boolean {
-    const initialLen = this.users.length;
-    this.users = this.users.filter(u => u.id !== id);
-    return this.users.length < initialLen;
+  public async deleteUser(id: number): Promise<boolean> {
+    const { data, error } = await this.client.from('users').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    return Boolean(data?.length);
   }
 
   // ==========================
   // ASSETS REPOSITORY
   // ==========================
-  public getAllAssets(): Asset[] {
-    return this.assets;
+  public async getAllAssets(): Promise<Asset[]> {
+    return this.query(this.client.from('assets').select('*').order('id', { ascending: false })) as Promise<Asset[]>;
   }
 
-  public createAsset(asset: Asset): Asset {
-    this.assets.unshift(asset);
-    return asset;
+  public async createAsset(asset: Asset): Promise<Asset> {
+    return this.query(this.client.from('assets').insert(asset).select().single()) as Promise<Asset>;
   }
 
-  public updateAsset(id: number, updates: Partial<Asset>): Asset | null {
-    const idx = this.assets.findIndex(a => a.id === id);
-    if (idx === -1) return null;
-    this.assets[idx] = { ...this.assets[idx], ...updates };
-    return this.assets[idx];
+  public async updateAsset(id: number, updates: Partial<Asset>): Promise<Asset | null> {
+    const { data, error } = await this.client.from('assets').update(updates).eq('id', id).select().maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as Asset | null;
   }
 
-  public deleteAsset(id: number): boolean {
-    const initialLen = this.assets.length;
-    this.assets = this.assets.filter(a => a.id !== id);
-    return this.assets.length < initialLen;
+  public async deleteAsset(id: number): Promise<boolean> {
+    const { data, error } = await this.client.from('assets').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    return Boolean(data?.length);
   }
 
-  public bulkInsertAssets(newAssets: Asset[]): Asset[] {
-    this.assets = [...newAssets, ...this.assets];
-    return this.assets;
+  public async bulkInsertAssets(newAssets: Asset[]): Promise<Asset[]> {
+    return this.query(this.client.from('assets').insert(newAssets).select()) as Promise<Asset[]>;
   }
 
-  public clearAssets(): void {
-    this.assets = [];
+  public async clearAssets(): Promise<void> {
+    await this.query(this.client.from('assets').delete().neq('id', 0).select('id'));
   }
 
   // ==========================
   // TICKETS REPOSITORY
   // ==========================
-  public getAllTickets(): Ticket[] {
-    return this.tickets;
+  public async getAllTickets(): Promise<Ticket[]> {
+    return this.query(this.client.from('tickets').select('*').order('id', { ascending: false })) as Promise<Ticket[]>;
   }
 
-  public createTicket(ticket: Ticket): Ticket {
-    this.tickets.unshift(ticket);
-    return ticket;
+  public async createTicket(ticket: Ticket): Promise<Ticket> {
+    return this.query(this.client.from('tickets').insert(ticket).select().single()) as Promise<Ticket>;
   }
 
-  public updateTicketStatus(id: number, status: Ticket['status'], notes?: string): Ticket | null {
-    const idx = this.tickets.findIndex(t => t.id === id);
-    if (idx === -1) return null;
-    this.tickets[idx] = {
-      ...this.tickets[idx],
-      status,
-      resolution_notes: notes || this.tickets[idx].resolution_notes,
-      updated_at: new Date().toISOString(),
-    };
-    return this.tickets[idx];
+  public async updateTicketStatus(id: number, status: Ticket['status'], notes?: string): Promise<Ticket | null> {
+    const { data, error } = await this.client.from('tickets').update({ status, resolution_notes: notes, updated_at: new Date().toISOString() }).eq('id', id).select().maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as Ticket | null;
   }
 
-  public deleteTicket(id: number): boolean {
-    const initialLen = this.tickets.length;
-    this.tickets = this.tickets.filter(t => t.id !== id);
-    return this.tickets.length < initialLen;
+  public async deleteTicket(id: number): Promise<boolean> {
+    const { data, error } = await this.client.from('tickets').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    return Boolean(data?.length);
   }
 
-  public clearTickets(): void {
-    this.tickets = [];
+  public async clearTickets(): Promise<void> {
+    await this.query(this.client.from('tickets').delete().neq('id', 0).select('id'));
   }
 
   // ==========================
   // ATTENDANCES REPOSITORY
   // ==========================
-  public getAllAttendances(): Attendance[] {
-    return this.attendances;
+  public async getAllAttendances(): Promise<Attendance[]> {
+    return this.query(this.client.from('attendances').select('*').order('id', { ascending: false })) as Promise<Attendance[]>;
   }
 
-  public createAttendance(att: Attendance): Attendance {
-    this.attendances.unshift(att);
-    return att;
+  public async createAttendance(att: Attendance): Promise<Attendance> {
+    return this.query(this.client.from('attendances').insert(att).select().single()) as Promise<Attendance>;
   }
 
-  public clearAttendances(): void {
-    this.attendances = [];
+  public async clearAttendances(): Promise<void> {
+    await this.query(this.client.from('attendances').delete().neq('id', 0).select('id'));
   }
 
   // ==========================
   // LEAVE REPOSITORY
   // ==========================
-  public getAllLeaves(): LeaveRequest[] {
-    return this.leaves;
+  public async getAllLeaves(): Promise<LeaveRequest[]> {
+    const leaves = await this.query(this.client.from('leave_requests').select('*, approvals:leave_approvals(*)').order('id', { ascending: false }));
+    return leaves as LeaveRequest[];
   }
 
-  public createLeave(leave: LeaveRequest): LeaveRequest {
-    this.leaves.unshift(leave);
-    return leave;
+  public async createLeave(leave: LeaveRequest): Promise<LeaveRequest> {
+    const { approvals, ...leaveData } = leave;
+    const saved = await this.query(this.client.from('leave_requests').insert(leaveData).select().single()) as LeaveRequest;
+    const { error } = await this.client.from('leave_approvals').insert(approvals);
+    if (error) throw new Error(error.message);
+    return { ...saved, approvals };
   }
 
-  public updateLeaveApproval(
+  public async updateLeaveApproval(
     leaveId: number,
     stepOrder: number,
     approverId: number,
@@ -161,61 +161,45 @@ class Database {
     status: 'Approved' | 'Rejected',
     signatureData: string,
     notes?: string
-  ): LeaveRequest | null {
-    const leaveIdx = this.leaves.findIndex(l => l.id === leaveId);
-    if (leaveIdx === -1) return null;
-
-    const leave = this.leaves[leaveIdx];
-    const approvalIdx = leave.approvals.findIndex(a => a.step_order === stepOrder);
-
-    if (approvalIdx !== -1) {
-      leave.approvals[approvalIdx] = {
-        ...leave.approvals[approvalIdx],
-        approver_id: approverId,
-        approver_name: approverName,
-        status,
-        signature_data: signatureData,
-        approved_at: new Date().toISOString(),
-        notes: notes || leave.approvals[approvalIdx].notes,
-      };
-    }
-
-    if (status === 'Rejected') {
-      leave.status = 'Rejected';
-    } else if (stepOrder === 3 && status === 'Approved') {
-      leave.status = 'Approved';
-    } else if (status === 'Approved') {
-      leave.current_step = stepOrder + 1;
-    }
-
-    this.leaves[leaveIdx] = { ...leave };
-    return this.leaves[leaveIdx];
+  ): Promise<LeaveRequest | null> {
+    const leave = await this.findLeaveById(leaveId);
+    if (!leave) return null;
+    const nextStatus = status === 'Rejected' ? 'Rejected' : stepOrder === 3 ? 'Approved' : leave.status;
+    const currentStep = status === 'Approved' && stepOrder < 3 ? stepOrder + 1 : leave.current_step;
+    await this.query(this.client.from('leave_approvals').update({ approver_id: approverId, approver_name: approverName, status, signature_data: signatureData, approved_at: new Date().toISOString(), notes }).eq('leave_id', leaveId).eq('step_order', stepOrder).select());
+    await this.query(this.client.from('leave_requests').update({ status: nextStatus, current_step: currentStep }).eq('id', leaveId).select());
+    return this.findLeaveById(leaveId);
   }
 
-  public clearLeaves(): void {
-    this.leaves = [];
+  private async findLeaveById(id: number): Promise<LeaveRequest | null> {
+    const { data, error } = await this.client.from('leave_requests').select('*, approvals:leave_approvals(*)').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as LeaveRequest | null;
+  }
+
+  public async clearLeaves(): Promise<void> {
+    await this.query(this.client.from('leave_requests').delete().neq('id', 0).select('id'));
   }
 
   // ==========================
   // DOCUMENTS REPOSITORY
   // ==========================
-  public getAllDocuments(): IctDocument[] {
-    return this.documents;
+  public async getAllDocuments(): Promise<IctDocument[]> {
+    return this.query(this.client.from('ict_documents').select('*').order('id', { ascending: false })) as Promise<IctDocument[]>;
   }
 
-  public createDocument(doc: IctDocument): IctDocument {
-    this.documents.unshift(doc);
-    return doc;
+  public async createDocument(doc: IctDocument): Promise<IctDocument> {
+    return this.query(this.client.from('ict_documents').insert(doc).select().single()) as Promise<IctDocument>;
   }
 
-  public deleteDocument(id: number): boolean {
-    const initialLen = this.documents.length;
-    this.documents = this.documents.filter(d => d.id !== id);
-    return this.documents.length < initialLen;
+  public async deleteDocument(id: number): Promise<boolean> {
+    const { data, error } = await this.client.from('ict_documents').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    return Boolean(data?.length);
   }
 
-  public clearDocuments(): void {
-    this.documents = [];
+  public async clearDocuments(): Promise<void> {
+    await this.query(this.client.from('ict_documents').delete().neq('id', 0).select('id'));
   }
 }
 
