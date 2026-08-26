@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { DslngLogo } from '../common/DslngLogo';
 import { User, Department, WorkLocation, Role } from '../../types';
 import { notifySuccess, notifyError } from '../../utils/notifications';
+import { authService } from '../../services/authService';
 import { Lock, Mail, User as UserIcon, Phone, Building2, MapPin, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface AuthProps {
   users: User[];
-  onLoginSuccess?: (user: User) => void;
-  onRegisterUser?: (newUser: User) => void;
+  onLoginSuccess?: (user: User) => void | Promise<void>;
+  onRegisterUser?: (newUser: User) => void | Promise<void>;
   onUpdatePassword?: (userId: number, newPass: string) => void;
-  onLogin?: (user: User) => void;
-  onRegister?: (newUser: User) => void;
+  onLogin?: (user: User) => void | Promise<void>;
+  onRegister?: (newUser: User) => void | Promise<void>;
   onChangePassword?: (userId: number, newPass: string) => void;
   onSwitchPersona?: (role: Role) => void;
 }
@@ -38,7 +39,7 @@ export const AuthScreens: React.FC<AuthProps> = ({
   const [regWorkLocation, setRegWorkLocation] = useState<WorkLocation>('Site Luwuk');
   const [regExtension, setRegExtension] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = loginEmail.trim().toLowerCase();
 
@@ -48,24 +49,20 @@ export const AuthScreens: React.FC<AuthProps> = ({
       return;
     }
 
-    const foundUser = users.find(u => u.email.toLowerCase() === email);
-
-    if (!foundUser) {
-      notifyError('Email atau password salah, atau akun belum terdaftar.');
+    if (!loginPassword) {
+      notifyError('Password wajib diisi.');
       return;
     }
 
-    // Check password (accepts their stored password, admin password TinaDSLNG321, or default DSLNG#2026)
-    const validPasswords = [foundUser.password, 'TinaDSLNG321', 'DSLNG#2026'];
-    if (!loginPassword || !validPasswords.includes(loginPassword)) {
-      notifyError('Email atau password salah, atau akun belum terdaftar.');
-      return;
+    try {
+      const { user } = await authService.login({ email, password: loginPassword });
+      await triggerLogin(user);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Email atau password salah.');
     }
-
-    triggerLogin(foundUser);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = regEmail.trim().toLowerCase();
 
@@ -75,35 +72,27 @@ export const AuthScreens: React.FC<AuthProps> = ({
       return;
     }
 
-    // Check if email already exists
-    if (users.some(u => u.email.toLowerCase() === email)) {
-      notifyError('Email ini sudah terdaftar. Silakan Login atau hubungi Administrator ICT.');
-      return;
-    }
-
     if (!regName.trim()) {
       notifyError('Mohon isi nama lengkap Anda.');
       return;
     }
 
-    const newUser: User = {
-      id: Date.now(),
-      name: regName.trim(),
-      email: email,
-      password: 'DSLNG#2026', // Automatically assigned default password
-      department: regDepartment,
-      work_location: regWorkLocation,
-      role: 'user', // Automatically defaults to standard staff/user
-      extension: regExtension.trim() ? (regExtension.startsWith('x') ? regExtension : `x${regExtension}`) : 'x1000',
-      created_at: new Date().toISOString(),
-      must_change_password: true,
-    };
-
-    triggerRegister(newUser);
-    notifySuccess('Pendaftaran berhasil! Silakan login dengan akun Anda.');
-    setLoginEmail(email);
-    setLoginPassword('');
-    setAuthMode('login');
+    try {
+      const { user } = await authService.register({
+        name: regName.trim(),
+        email,
+        department: regDepartment,
+        work_location: regWorkLocation,
+        extension: regExtension.trim() || undefined,
+      });
+      await triggerRegister(user);
+      notifySuccess('Pendaftaran berhasil! Silakan login dengan akun Anda.');
+      setLoginEmail(email);
+      setLoginPassword('');
+      setAuthMode('login');
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Registrasi gagal.');
+    }
   };
 
   return (

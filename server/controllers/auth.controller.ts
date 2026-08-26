@@ -78,6 +78,44 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const createManagedUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, department, work_location, role, extension } = req.body;
+    if (!name || !email) {
+      res.status(400).json({ error: 'Nama dan email wajib diisi.' });
+      return;
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!cleanEmail.endsWith('@dslng.com')) {
+      res.status(400).json({ error: 'Email wajib menggunakan domain resmi @dslng.com.' });
+      return;
+    }
+    if (await db.findUserByEmail(cleanEmail)) {
+      res.status(409).json({ error: 'Email sudah terdaftar. Silakan gunakan email lain.' });
+      return;
+    }
+
+    const user: User = {
+      id: Date.now(),
+      name: String(name).trim(),
+      email: cleanEmail,
+      password: String(password || 'password123'),
+      department: department || 'Operations Directorate',
+      work_location: work_location || 'Site Luwuk',
+      role: role || 'user',
+      extension: extension || 'x1000',
+      created_at: new Date().toISOString(),
+      must_change_password: false,
+    };
+    const saved = await db.createUser(user);
+    const { password: _, ...safeUser } = saved;
+    res.status(201).json({ message: 'Pengguna berhasil dibuat.', user: safeUser });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal membuat pengguna.' });
+  }
+};
+
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await db.getAllUsers();

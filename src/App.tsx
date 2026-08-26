@@ -30,6 +30,7 @@ import { LeaveModule } from './components/leave/LeaveModule';
 import { IctProfileModule } from './components/profile/IctProfileModule';
 import { UserManagementModule } from './components/admin/UserManagementModule';
 import { notifySuccess, notifyError } from './utils/notifications';
+import { authService } from './services/authService';
 import { ShieldAlert, Building2 } from 'lucide-react';
 
 // Helper to ensure every user has all required fields populated
@@ -51,27 +52,38 @@ const sanitizeUser = (u: any, fallbackId = 1): User => {
 
 export function App() {
   // Authentication & Users State (Single Administrator Default)
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const isUsersCleaned = localStorage.getItem('dslng_user_v9_admin_tina');
-      if (!isUsersCleaned) {
-        localStorage.setItem('dslng_users', JSON.stringify(INITIAL_USERS));
-        localStorage.removeItem('dslng_current_user');
-        localStorage.setItem('dslng_user_v9_admin_tina', 'true');
-        return INITIAL_USERS;
-      }
-      const saved = localStorage.getItem('dslng_users');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((u, idx) => sanitizeUser(u, idx + 1));
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const { users: remoteUsers } = await authService.getUsers();
+        const remoteEmails = new Set(remoteUsers.map((user) => user.email.toLowerCase()));
+        const savedUsers = localStorage.getItem('dslng_users');
+        const legacyUsers = savedUsers ? JSON.parse(savedUsers) : [];
+
+        if (Array.isArray(legacyUsers)) {
+          for (const legacyUser of legacyUsers as User[]) {
+            if (!legacyUser?.email || remoteEmails.has(legacyUser.email.toLowerCase())) continue;
+            try {
+              const { user } = await authService.createUser(legacyUser);
+              remoteUsers.push(user);
+              remoteEmails.add(user.email.toLowerCase());
+            } catch (error) {
+              console.warn('User lama gagal dimigrasikan:', legacyUser.email, error);
+            }
+          }
         }
+
+        setUsers(remoteUsers.map((user) => sanitizeUser(user)));
+        localStorage.removeItem('dslng_users');
+      } catch (error) {
+        notifyError(error instanceof Error ? error.message : 'Gagal memuat data pengguna.');
       }
-    } catch (e) {
-      console.error(e);
-    }
-    return INITIAL_USERS;
-  });
+    };
+
+    void loadUsers();
+  }, []);
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
@@ -187,10 +199,6 @@ export function App() {
 
   // Sync to LocalStorage
   useEffect(() => {
-    localStorage.setItem('dslng_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
     if (currentUser) {
       localStorage.setItem('dslng_current_user', JSON.stringify(currentUser));
     } else {
@@ -234,7 +242,7 @@ export function App() {
   };
 
   const handleRegister = (newUser: User) => {
-    setUsers((prev) => [...prev, newUser]);
+    setUsers((prev) => [newUser, ...prev.filter((user) => user.id !== newUser.id)]);
     setCurrentUser(newUser);
   };
 
@@ -268,11 +276,13 @@ export function App() {
     }
   };
 
-  const handleAddUser = (newUser: User) => {
-    setUsers((prev) => [newUser, ...prev]);
+  const handleAddUser = async (newUser: User) => {
+    const { user } = await authService.createUser(newUser);
+    setUsers((prev) => [user, ...prev.filter((item) => item.id !== user.id)]);
   };
 
-  const handleDeleteUser = (userId: number) => {
+  const handleDeleteUser = async (userId: number) => {
+    await authService.deleteUser(userId);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 

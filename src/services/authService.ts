@@ -22,6 +22,13 @@ export const authService = {
     });
   },
 
+  createUser: async (payload: Partial<User>) => {
+    return apiFetch<{ message: string; user: User }>('/auth/users', {
+      method: 'POST',
+      data: payload,
+    });
+  },
+
   getUsers: async () => {
     return apiFetch<{ users: User[] }>('/auth/users');
   },
